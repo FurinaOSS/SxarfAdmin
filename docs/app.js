@@ -1,5 +1,5 @@
 // ============================================================================
-// Sxarf AI Admin Console - Frontend Application Logic
+// Sxarf AI Admin Console - Frontend Application Logic (Bulletproof Edition)
 // ============================================================================
 
 const SUPABASE_URL = 'https://toduyybsfaxgidehogbe.supabase.co';
@@ -39,16 +39,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupNavigation();
     setupEventListeners();
 
-    // Check existing session
+    // 1. Bulletproof PKCE Code Interceptor for GitHub Pages redirection
+    const urlParams = new URLSearchParams(window.location.search);
+    const authCode = urlParams.get('code');
+
+    if (authCode) {
+        console.log("Detected PKCE auth code in URL, forcing session exchange...");
+        try {
+            const { data, error } = await supabaseClient.auth.exchangeCodeForSession(window.location.href);
+            if (error) throw error;
+            console.log("Successfully exchanged code for session:", data.session);
+            // Clean URL query parameters to avoid loop/reuse issues
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (err) {
+            console.error("Code exchange failed:", err);
+            showAuthError("Authentication code exchange failed: " + err.message);
+        }
+    }
+
+    // 2. Check existing session
     const { data: { session }, error } = await supabaseClient.auth.getSession();
+    console.log("Initial getSession result:", session, error);
+
     if (session) {
         await handleSuccessfulAuth(session);
     } else {
         showAuthView();
     }
 
-    // Listen for auth state changes
+    // 3. Listen for auth state changes
     supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        console.log("Auth state change event:", event, session);
         if (session) {
             await handleSuccessfulAuth(session);
         } else {
@@ -86,15 +107,17 @@ async function handleSuccessfulAuth(session) {
 
     // Verify admin privileges server-side via private.is_admin() or overview stats RPC
     try {
+        console.log("Verifying admin privileges via RPC...");
         const { data, error } = await supabaseClient.rpc('admin_get_overview_stats');
         if (error) throw error;
 
+        console.log("Admin verification passed. Launching console.");
         authView.classList.add('hidden');
         appView.classList.remove('hidden');
         loadTabData('overview');
     } catch (err) {
         console.error('Admin authorization check failed:', err);
-        showAuthError('Access Denied: Account does not possess administrator privileges (`private.is_admin()`).');
+        showAuthError(`Access Denied: Account (${currentUser.email}) does not possess administrator privileges.`);
         await supabaseClient.auth.signOut();
         showAuthView();
     }
@@ -110,7 +133,7 @@ function setupEventListeners() {
         const { error } = await supabaseClient.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.href.split('#')[0]
+                redirectTo: window.location.href.split('#')[0].split('?')[0]
             }
         });
         if (error) showAuthError(error.message);
@@ -351,7 +374,6 @@ async function loadPublicAccessState() {
 }
 
 async function loadRedemptions() {
-    // If admin_redemption_history exists in existing backend
     const { data, error } = await supabaseClient.rpc('admin_redemption_history', { p_limit: 100 });
     const tbody = document.getElementById('redemptions-table-body');
     tbody.innerHTML = '';
