@@ -6,15 +6,15 @@ const SUPABASE_URL = 'https://toduyybsfaxgidehogbe.supabase.co';
 // Public Anon Key - Safe for client-side usage
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHV5eWJzZmF4Z2lkZWhvZ2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjV9.placeholder_key_replace_with_actual_anon_jwt'; 
 
-// Initialize Supabase Client with explicit localStorage and flow type
+// Initialize Supabase Client with sessionStorage for robust PKCE persistence across redirects
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        storage: window.localStorage,
-        flowType: 'pkce' // Ensures secure authorization code flow
+        storage: window.sessionStorage, // Swapped from localStorage to sessionStorage
+        flowType: 'pkce'
     }
 });
 
