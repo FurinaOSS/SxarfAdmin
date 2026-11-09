@@ -276,8 +276,21 @@ async function loadTabData(tabName) {
 }
 
 async function loadOverviewStats() {
+    // Explicitly grab the active session to ensure the token is attached
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) {
+        console.error("No active session found during overview stats load.");
+        showAuthView();
+        return;
+    }
+
     const { data, error } = await supabaseClient.rpc('admin_get_overview_stats');
-    if (error) return console.error(error);
+    if (error) {
+        console.error("RPC Error loading overview stats:", error);
+        return;
+    }
+
+    if (!data) return;
 
     document.getElementById('stat-total-accounts').textContent = data.total_accounts ?? 0;
     document.getElementById('stat-active-subs').textContent = data.active_subscriptions ?? 0;
