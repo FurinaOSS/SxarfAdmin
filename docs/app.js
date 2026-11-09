@@ -4,7 +4,7 @@
 
 const SUPABASE_URL = 'https://toduyybsfaxgidehogbe.supabase.co';
 // Public Anon Key - Safe for client-side usage
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHV5eWJzZmF4Z2lkZWhvZ2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjV9.placeholder_key_replace_with_actual_anon_jwt'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHV5eWJzZmF4Z2lkZWhvZ2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMzY5NzIsImV4cCI6MjEwOTcxMjk3Mn0.b7s-vQrNlsmIEMtZHV2krbql46jjaWGAGdREsqOnYz8'; 
 
 // Initialize Supabase Client using standard flow to avoid verifier loss on static hosts
 const { createClient } = supabase;
