@@ -6,11 +6,11 @@
     <meta name="color-scheme" content="dark">
     <meta name="robots" content="noindex, nofollow">
     <title>Sxarf AI · Admin Console</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M21 11c-1-2-3-3-5-3-3 0-5 1.6-5 4 0 5 10 2.6 10 8 0 2.4-2.2 4-5 4-2.4 0-4.4-1-5.4-3' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23fafafa'/%3E%3Cpath d='M21 11c-1-2-3-3-5-3-3 0-5 1.6-5 4 0 5 10 2.6 10 8 0 2.4-2.2 4-5 4-2.4 0-4.4-1-5.4-3' fill='none' stroke='%230a0a0a' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=3">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -135,22 +135,22 @@
                         </div>
                         <div class="stat-card">
                             <div class="stat-top"><span class="stat-label">Active subscriptions</span>
-                                <span class="stat-icon tone-green"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span></div>
+                                <span class="stat-icon"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span></div>
                             <span id="stat-active-subs" class="stat-value">-</span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-top"><span class="stat-label">Expired subscriptions</span>
-                                <span class="stat-icon tone-amber"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span></div>
+                                <span class="stat-icon"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span></div>
                             <span id="stat-expired-subs" class="stat-value">-</span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-top"><span class="stat-label">Suspended</span>
-                                <span class="stat-icon tone-amber"><svg class="ico" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></span></div>
+                                <span class="stat-icon"><svg class="ico" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></span></div>
                             <span id="stat-suspended" class="stat-value">-</span>
                         </div>
                         <div class="stat-card">
                             <div class="stat-top"><span class="stat-label">Terminated</span>
-                                <span class="stat-icon tone-red"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></span></div>
+                                <span class="stat-icon"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></span></div>
                             <span id="stat-terminated" class="stat-value">-</span>
                         </div>
                         <div class="stat-card">
@@ -252,7 +252,7 @@
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
-                                <tr><th>Code</th><th>Plan</th><th>Duration</th><th>Status</th><th>Batch</th><th>Redeemed by</th></tr>
+                                <tr><th>Code</th><th>Plan</th><th>Duration</th><th>Status</th><th>Batch</th><th>Redeemed by</th><th></th></tr>
                             </thead>
                             <tbody id="gc-table-body"></tbody>
                         </table>
@@ -313,7 +313,7 @@
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
-                                <tr><th>Code</th><th>Plan</th><th>Duration</th><th>Redeemed by</th><th>Redeemed at</th></tr>
+                                <tr><th>Code</th><th>Plan</th><th>Duration</th><th>Redeemed by</th><th>Plan change</th><th>Redeemed at</th></tr>
                             </thead>
                             <tbody id="redemptions-table-body"></tbody>
                         </table>
@@ -376,6 +376,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
