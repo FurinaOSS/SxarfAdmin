@@ -3,295 +3,370 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sxarf AI — Administration Console</title>
+    <meta name="color-scheme" content="dark">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Sxarf AI · Admin Console</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%236366f1'/%3E%3Cpath d='M21 11c-1-2-3-3-5-3-3 0-5 1.6-5 4 0 5 10 2.6 10 8 0 2.4-2.2 4-5 4-2.4 0-4.4-1-5.4-3' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
     <link rel="stylesheet" href="styles.css">
-    <!-- Supabase JS SDK v2 CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <!-- AUTHENTICATION VIEW -->
+
+    <!-- ============================ SIGN IN ============================ -->
     <div id="auth-view" class="auth-container">
-        <div class="auth-box">
+        <div class="auth-glow" aria-hidden="true"></div>
+        <main class="auth-box">
+            <div class="brand-mark brand-mark-lg" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="26" height="26"><path d="M21 11c-1-2-3-3-5-3-3 0-5 1.6-5 4 0 5 10 2.6 10 8 0 2.4-2.2 4-5 4-2.4 0-4.4-1-5.4-3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>
+            </div>
             <h1>Sxarf AI</h1>
-            <p class="subtitle">Administrative Console</p>
-            <div id="auth-error" class="error-banner hidden"></div>
-            <button id="google-login-btn" class="btn btn-primary">
-                <svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h5.51c-.24 1.25-1.04 2.31-2.21 3.03v2.51h3.57c2.08-1.92 3.3-4.74 3.3-8.14 0-.75-.07-1.48-.2-2.13z"/><path fill="currentColor" d="M12.18 21c2.97 0 5.46-.98 7.28-2.66l-3.57-2.51c-.98.66-2.24 1.05-3.71 1.05-2.86 0-5.29-1.93-6.16-4.53H2.29v2.59C4.12 18.57 7.85 21 12.18 21z"/><path fill="currentColor" d="M6.02 12.35c-.22-.66-.35-1.37-.35-2.11s.13-1.45.35-2.11V5.54H2.29C1.53 7.07 1.1 8.98 1.1 11s.43 3.93 1.19 5.46l3.73-2.89z"/><path fill="currentColor" d="M12.18 5.75c1.62 0 3.07.56 4.22 1.66l3.16-3.16C17.64 2.5 15.15 1.5 12.18 1.5 7.85 1.5 4.12 3.93 2.29 7.54l3.73 2.89c.87-2.6 3.3-4.68 6.16-4.68z"/></svg>
-                Sign in with Google
+            <p class="subtitle">Administration Console</p>
+
+            <div id="auth-error" class="error-banner hidden" role="alert"></div>
+
+            <button id="google-login-btn" class="btn btn-google">
+                <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="#4285F4" d="M21.35 11.1h-9.17v2.73h5.51c-.24 1.25-1.04 2.31-2.21 3.03v2.51h3.57c2.08-1.92 3.3-4.74 3.3-8.14 0-.75-.07-1.48-.2-2.13z"/>
+                    <path fill="#34A853" d="M12.18 21c2.97 0 5.46-.98 7.28-2.66l-3.57-2.51c-.98.66-2.24 1.05-3.71 1.05-2.86 0-5.29-1.93-6.16-4.53H2.29v2.59C4.12 18.57 7.85 21 12.18 21z"/>
+                    <path fill="#FBBC05" d="M6.02 12.35c-.22-.66-.35-1.37-.35-2.11s.13-1.45.35-2.11V5.54H2.29C1.53 7.07 1.1 8.98 1.1 11s.43 3.93 1.19 5.46l3.73-2.89z"/>
+                    <path fill="#EA4335" d="M12.18 5.75c1.62 0 3.07.56 4.22 1.66l3.16-3.16C17.64 2.5 15.15 1.5 12.18 1.5 7.85 1.5 4.12 3.93 2.29 7.54l3.73 2.89c.87-2.6 3.3-4.68 6.16-4.68z"/>
+                </svg>
+                Continue with Google
             </button>
-        </div>
+
+            <p class="auth-note">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Restricted to authorized administrators. All actions are logged.
+            </p>
+        </main>
     </div>
 
-    <!-- MAIN APP DASHBOARD -->
+    <!-- ============================ APP ============================ -->
     <div id="app-view" class="app-layout hidden">
+
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>Sxarf AI</h2>
-                <span class="badge-admin">Admin</span>
+                <div class="brand-mark" aria-hidden="true">
+                    <svg viewBox="0 0 32 32" width="18" height="18"><path d="M21 11c-1-2-3-3-5-3-3 0-5 1.6-5 4 0 5 10 2.6 10 8 0 2.4-2.2 4-5 4-2.4 0-4.4-1-5.4-3" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>
+                </div>
+                <div class="brand-text">
+                    <h2>Sxarf AI</h2>
+                    <span class="badge-admin">Admin</span>
+                </div>
             </div>
-            <nav class="nav-menu">
-                <a href="#overview" class="nav-item active" data-tab="overview">Overview</a>
-                <a href="#accounts" class="nav-item" data-tab="accounts">Accounts</a>
-                <a href="#capabilities" class="nav-item" data-tab="capabilities">Capabilities</a>
-                <a href="#giftcards" class="nav-item" data-tab="giftcards">Gift Cards</a>
-                <a href="#disclaimers" class="nav-item" data-tab="disclaimers">Disclaimers</a>
-                <a href="#publicaccess" class="nav-item" data-tab="publicaccess">Public Access</a>
-                <a href="#redemptions" class="nav-item" data-tab="redemptions">Redemption History</a>
-                <a href="#auditlog" class="nav-item" data-tab="auditlog">Audit Log</a>
-                <a href="#settings" class="nav-item" data-tab="settings">Settings</a>
+
+            <nav class="nav-menu" aria-label="Main navigation">
+                <div class="nav-group-label">Workspace</div>
+                <a href="#overview" class="nav-item active" data-tab="overview" title="Overview">
+                    <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+                    <span>Overview</span>
+                </a>
+                <a href="#accounts" class="nav-item" data-tab="accounts" title="Accounts">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <span>Accounts</span>
+                </a>
+
+                <div class="nav-group-label">Billing &amp; Access</div>
+                <a href="#capabilities" class="nav-item" data-tab="capabilities" title="Capabilities">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                    <span>Capabilities</span>
+                </a>
+                <a href="#giftcards" class="nav-item" data-tab="giftcards" title="Gift Cards">
+                    <svg class="ico" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+                    <span>Gift Cards</span>
+                </a>
+                <a href="#redemptions" class="nav-item" data-tab="redemptions" title="Redemption History">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+                    <span>Redemptions</span>
+                </a>
+
+                <div class="nav-group-label">System</div>
+                <a href="#disclaimers" class="nav-item" data-tab="disclaimers" title="Disclaimers">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>
+                    <span>Disclaimers</span>
+                </a>
+                <a href="#publicaccess" class="nav-item" data-tab="publicaccess" title="Public Access">
+                    <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <span>Public Access</span>
+                </a>
+                <a href="#auditlog" class="nav-item" data-tab="auditlog" title="Audit Log">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h8"/></svg>
+                    <span>Audit Log</span>
+                </a>
+                <a href="#settings" class="nav-item" data-tab="settings" title="Settings">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></svg>
+                    <span>Settings</span>
+                </a>
             </nav>
+
             <div class="sidebar-footer">
-                <div id="user-email" class="user-email">admin@sxarf.ai</div>
-                <button id="logout-btn" class="btn-text">Sign Out</button>
+                <div class="user-chip">
+                    <div class="user-avatar" aria-hidden="true">
+                        <svg class="ico" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </div>
+                    <div class="user-meta">
+                        <div id="user-email" class="user-email">admin</div>
+                        <div class="user-role">Administrator</div>
+                    </div>
+                </div>
+                <button id="logout-btn" class="btn-icon" title="Sign out" aria-label="Sign out">
+                    <svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>
+                </button>
             </div>
         </aside>
 
         <main class="main-content">
-            <!-- TAB: OVERVIEW -->
-            <section id="tab-overview" class="tab-content active">
-                <header class="content-header">
-                    <h2>Overview</h2>
-                    <p class="section-desc">System telemetry and active subscription metrics.</p>
-                </header>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <span class="stat-label">Total Accounts</span>
-                        <span id="stat-total-accounts" class="stat-value">-</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Active Subscriptions</span>
-                        <span id="stat-active-subs" class="stat-value">-</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Expired Subscriptions</span>
-                        <span id="stat-expired-subs" class="stat-value">-</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Suspended Accounts</span>
-                        <span id="stat-suspended" class="stat-value">-</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Terminated Accounts</span>
-                        <span id="stat-terminated" class="stat-value">-</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-label">Gift Cards Generated</span>
-                        <span id="stat-gc-gen" class="stat-value">-</span>
-                    </div>
-                </div>
-            </section>
+            <div class="page">
 
-            <!-- TAB: ACCOUNTS -->
-            <section id="tab-accounts" class="tab-content">
-                <header class="content-header">
-                    <h2>Account Management</h2>
-                    <p class="section-desc">Inspect, upgrade, downgrade, suspend, or terminate user accounts.</p>
-                </header>
-                <div class="toolbar">
-                    <input type="text" id="account-search-input" placeholder="Search by email or UUID..." class="input-text">
-                    <button id="account-search-btn" class="btn btn-secondary">Search</button>
-                </div>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Email / ID</th>
-                                <th>Plan</th>
-                                <th>Expires At</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="accounts-table-body">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- TAB: CAPABILITIES -->
-            <section id="tab-capabilities" class="tab-content">
-                <header class="content-header">
-                    <h2>Capabilities</h2>
-                    <p class="section-desc">Grant specific modular capabilities to user accounts.</p>
-                </header>
-                <div class="card form-card">
-                    <h3>Grant Capabilities</h3>
-                    <div class="form-group">
-                        <label>User ID or Email</label>
-                        <input type="text" id="cap-user-input" class="input-text" placeholder="User UUID">
-                    </div>
-                    <div class="form-group">
-                        <label>Capabilities (Comma separated)</label>
-                        <input type="text" id="cap-list-input" class="input-text" placeholder="advanced_models, priority_support, unlimited_context">
-                    </div>
-                    <button id="cap-submit-btn" class="btn btn-primary">Grant Capabilities</button>
-                </div>
-            </section>
-
-            <!-- TAB: GIFT CARDS -->
-            <section id="tab-giftcards" class="tab-content">
-                <header class="content-header">
-                    <h2>Gift Cards</h2>
-                    <p class="section-desc">Generate and manage subscription gift cards.</p>
-                </header>
-                <div class="card form-card">
-                    <h3>Generate Gift Cards</h3>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Plan</label>
-                            <select id="gc-plan" class="input-select">
-                                <option value="starter">Starter</option>
-                                <option value="pro" selected>Pro</option>
-                                <option value="enterprise">Enterprise</option>
-                            </select>
+                <!-- OVERVIEW -->
+                <section id="tab-overview" class="tab-content active">
+                    <header class="content-header">
+                        <h2>Overview</h2>
+                        <p class="section-desc">Live system metrics and subscription health.</p>
+                    </header>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-top"><span class="stat-label">Total accounts</span>
+                                <span class="stat-icon"><svg class="ico" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span></div>
+                            <span id="stat-total-accounts" class="stat-value">-</span>
                         </div>
-                        <div class="form-group">
-                            <label>Duration</label>
-                            <select id="gc-duration" class="input-select">
-                                <option value="month_1">1 Month</option>
-                                <option value="month_3">3 Months</option>
-                                <option value="year_1">1 Year</option>
-                                <option value="permanent">Permanent</option>
-                            </select>
+                        <div class="stat-card">
+                            <div class="stat-top"><span class="stat-label">Active subscriptions</span>
+                                <span class="stat-icon tone-green"><svg class="ico" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span></div>
+                            <span id="stat-active-subs" class="stat-value">-</span>
                         </div>
-                        <div class="form-group">
-                            <label>Count</label>
-                            <input type="number" id="gc-count" class="input-text" value="1" min="1" max="50">
+                        <div class="stat-card">
+                            <div class="stat-top"><span class="stat-label">Expired subscriptions</span>
+                                <span class="stat-icon tone-amber"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span></div>
+                            <span id="stat-expired-subs" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-top"><span class="stat-label">Suspended</span>
+                                <span class="stat-icon tone-amber"><svg class="ico" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg></span></div>
+                            <span id="stat-suspended" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-top"><span class="stat-label">Terminated</span>
+                                <span class="stat-icon tone-red"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></span></div>
+                            <span id="stat-terminated" class="stat-value">-</span>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-top"><span class="stat-label">Gift cards issued</span>
+                                <span class="stat-icon"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg></span></div>
+                            <span id="stat-gc-gen" class="stat-value">-</span>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Note / Batch Label</label>
-                        <input type="text" id="gc-note" class="input-text" placeholder="Promotion batch Q2">
-                    </div>
-                    <button id="gc-generate-btn" class="btn btn-primary">Generate Cards</button>
-                </div>
-                <div id="gc-results-container" class="hidden card">
-                    <h4>Generated Codes</h4>
-                    <textarea id="gc-generated-output" class="input-textarea" readonly></textarea>
-                </div>
-            </section>
+                </section>
 
-            <!-- TAB: DISCLAIMERS -->
-            <section id="tab-disclaimers" class="tab-content">
-                <header class="content-header">
-                    <h2>Disclaimers & Broadcasts</h2>
-                    <p class="section-desc">Send targeted notices or system-wide announcements.</p>
-                </header>
-                <div class="card form-card">
-                    <div class="form-group">
-                        <label>Target (Leave empty for all users)</label>
-                        <input type="text" id="disclaimer-target" class="input-text" placeholder="Specific User UUID (optional)">
+                <!-- ACCOUNTS -->
+                <section id="tab-accounts" class="tab-content">
+                    <header class="content-header">
+                        <h2>Accounts</h2>
+                        <p class="section-desc">Search users, change plans, and manage account status.</p>
+                    </header>
+                    <div class="toolbar">
+                        <div class="search-field">
+                            <svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            <input type="text" id="account-search-input" placeholder="Search by email or user ID" class="input-text" autocomplete="off">
+                        </div>
+                        <button id="account-search-btn" class="btn btn-secondary">Search</button>
                     </div>
-                    <div class="form-group">
-                        <label>Message Content (Max 2000 chars)</label>
-                        <textarea id="disclaimer-message" class="input-textarea" rows="4" placeholder="Enter notice message..."></textarea>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Account</th><th>Plan</th><th>Expires</th><th>Status</th><th>Actions</th></tr>
+                            </thead>
+                            <tbody id="accounts-table-body"></tbody>
+                        </table>
                     </div>
-                    <div class="btn-group">
-                        <button id="disclaimer-send-one" class="btn btn-secondary">Send to User</button>
-                        <button id="disclaimer-send-all" class="btn btn-primary">Broadcast to All</button>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- TAB: PUBLIC ACCESS -->
-            <section id="tab-publicaccess" class="tab-content">
-                <header class="content-header">
-                    <h2>Public Access Control</h2>
-                    <p class="section-desc">Globally enable or disable client access to Sxarf AI.</p>
-                </header>
-                <div class="card form-card">
-                    <div class="status-indicator-box">
-                        <span>Current Status:</span>
-                        <strong id="public-access-status-badge" class="badge">Loading...</strong>
+                <!-- CAPABILITIES -->
+                <section id="tab-capabilities" class="tab-content">
+                    <header class="content-header">
+                        <h2>Capabilities</h2>
+                        <p class="section-desc">Grant individual capabilities to an account, independent of its plan. Grants are permanent.</p>
+                    </header>
+                    <div class="card form-card narrow">
+                        <h3>Grant capabilities</h3>
+                        <div class="form-group">
+                            <label for="cap-user-input">User</label>
+                            <input type="text" id="cap-user-input" class="input-text" placeholder="Email address or user ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="cap-list-input">Capabilities</label>
+                            <input type="text" id="cap-list-input" class="input-text" placeholder="advanced_models, priority_support">
+                            <p class="field-hint">Comma-separated. Must match capabilities defined in your plans.</p>
+                        </div>
+                        <button id="cap-submit-btn" class="btn btn-primary">Grant capabilities</button>
                     </div>
-                    <div class="form-group">
-                        <label>Shutdown / Maintenance Message</label>
-                        <textarea id="public-shutdown-msg" class="input-textarea" placeholder="Optional reason displayed to users upon shutdown..."></textarea>
-                    </div>
-                    <div class="btn-group">
-                        <button id="public-shutdown-btn" class="btn btn-danger">Shut Down Access</button>
-                        <button id="public-restore-btn" class="btn btn-success">Restore Access</button>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- TAB: REDEMPTION HISTORY -->
-            <section id="tab-redemptions" class="tab-content">
-                <header class="content-header">
-                    <h2>Redemption History</h2>
-                    <p class="section-desc">Audit trail of gift card redemptions.</p>
-                </header>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Code ID</th>
-                                <th>Plan</th>
-                                <th>Duration</th>
-                                <th>Redeemed By</th>
-                                <th>Redeemed At</th>
-                            </tr>
-                        </thead>
-                        <tbody id="redemptions-table-body">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- TAB: AUDIT LOG -->
-            <section id="tab-auditlog" class="tab-content">
-                <header class="content-header">
-                    <h2>Audit Log</h2>
-                    <p class="section-desc">Immutable log of administrative actions.</p>
-                </header>
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Admin</th>
-                                <th>Action</th>
-                                <th>Target</th>
-                                <th>Details</th>
-                            </tr>
-                        </thead>
-                        <tbody id="audit-table-body">
-                            <!-- Populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- TAB: SETTINGS -->
-            <section id="tab-settings" class="tab-content">
-                <header class="content-header">
-                    <h2>Settings</h2>
-                    <p class="section-desc">Configuration parameters for the admin console.</p>
-                </header>
-                <div class="card form-card">
-                    <div class="form-group">
-                        <label>Supabase URL</label>
-                        <input type="text" id="config-url" class="input-text" readonly>
+                <!-- GIFT CARDS -->
+                <section id="tab-giftcards" class="tab-content">
+                    <header class="content-header">
+                        <h2>Gift Cards</h2>
+                        <p class="section-desc">Generate timed or permanent plan codes and track their status.</p>
+                    </header>
+                    <div class="card form-card">
+                        <h3>Generate gift cards</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="gc-plan">Plan</label>
+                                <select id="gc-plan" class="input-select"></select>
+                            </div>
+                            <div class="form-group">
+                                <label for="gc-duration">Duration</label>
+                                <select id="gc-duration" class="input-select">
+                                    <option value="month_1">1 month</option>
+                                    <option value="month_3">3 months</option>
+                                    <option value="year_1">1 year</option>
+                                    <option value="permanent">Permanent</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="gc-count">Quantity</label>
+                                <input type="number" id="gc-count" class="input-text" value="1" min="1" max="100">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="gc-note">Batch label <span class="optional">optional</span></label>
+                            <input type="text" id="gc-note" class="input-text" placeholder="e.g. Spring promotion">
+                        </div>
+                        <button id="gc-generate-btn" class="btn btn-primary">Generate cards</button>
                     </div>
-                    <div class="form-group">
-                        <label>Supabase Anon Key</label>
-                        <input type="password" id="config-key" class="input-text" readonly>
+
+                    <div id="gc-results-container" class="hidden card">
+                        <h4>Generated codes</h4>
+                        <p class="field-hint" style="margin-bottom:12px;">Copy these now. Full codes are not stored and cannot be shown again.</p>
+                        <textarea id="gc-generated-output" class="input-textarea" rows="6" readonly></textarea>
                     </div>
-                    <button id="test-connection-btn" class="btn btn-secondary">Test Connection & Admin Status</button>
-                </div>
-            </section>
+
+                    <div class="section-bar">
+                        <h3>All cards</h3>
+                        <button id="gc-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Code</th><th>Plan</th><th>Duration</th><th>Status</th><th>Batch</th><th>Redeemed by</th></tr>
+                            </thead>
+                            <tbody id="gc-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- DISCLAIMERS -->
+                <section id="tab-disclaimers" class="tab-content">
+                    <header class="content-header">
+                        <h2>Disclaimers &amp; Broadcasts</h2>
+                        <p class="section-desc">Send a notice to one user, or announce something to everyone.</p>
+                    </header>
+                    <div class="card form-card narrow">
+                        <div class="form-group">
+                            <label for="disclaimer-target">Recipient <span class="optional">only for single-user notices</span></label>
+                            <input type="text" id="disclaimer-target" class="input-text" placeholder="Email address or user ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="disclaimer-message">Message</label>
+                            <textarea id="disclaimer-message" class="input-textarea input-prose" rows="5" maxlength="2000" placeholder="Write your notice..."></textarea>
+                            <p class="field-hint">Up to 2,000 characters.</p>
+                        </div>
+                        <div class="btn-group">
+                            <button id="disclaimer-send-one" class="btn btn-secondary">Send to user</button>
+                            <button id="disclaimer-send-all" class="btn btn-primary">Broadcast to everyone</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- PUBLIC ACCESS -->
+                <section id="tab-publicaccess" class="tab-content">
+                    <header class="content-header">
+                        <h2>Public Access</h2>
+                        <p class="section-desc">Turn client access to Sxarf AI on or off for every user.</p>
+                    </header>
+                    <div class="card form-card narrow">
+                        <div class="status-indicator-box">
+                            <span class="status-label">Current status</span>
+                            <strong id="public-access-status-badge" class="badge">Loading...</strong>
+                        </div>
+                        <div class="form-group">
+                            <label for="public-shutdown-msg">Maintenance message <span class="optional">optional</span></label>
+                            <textarea id="public-shutdown-msg" class="input-textarea input-prose" rows="3" placeholder="Shown to users while access is disabled"></textarea>
+                        </div>
+                        <div class="btn-group">
+                            <button id="public-shutdown-btn" class="btn btn-danger">Shut down access</button>
+                            <button id="public-restore-btn" class="btn btn-success">Restore access</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- REDEMPTIONS -->
+                <section id="tab-redemptions" class="tab-content">
+                    <header class="content-header">
+                        <h2>Redemption History</h2>
+                        <p class="section-desc">Every gift card that has been redeemed.</p>
+                    </header>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Code</th><th>Plan</th><th>Duration</th><th>Redeemed by</th><th>Redeemed at</th></tr>
+                            </thead>
+                            <tbody id="redemptions-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- AUDIT LOG -->
+                <section id="tab-auditlog" class="tab-content">
+                    <header class="content-header">
+                        <h2>Audit Log</h2>
+                        <p class="section-desc">A record of every administrative action, newest first.</p>
+                    </header>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr><th>Time</th><th>Admin</th><th>Action</th><th>Target</th><th>Details</th></tr>
+                            </thead>
+                            <tbody id="audit-table-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SETTINGS -->
+                <section id="tab-settings" class="tab-content">
+                    <header class="content-header">
+                        <h2>Settings</h2>
+                        <p class="section-desc">Connection details for this console.</p>
+                    </header>
+                    <div class="card form-card narrow">
+                        <div class="form-group">
+                            <label for="config-url">Supabase URL</label>
+                            <input type="text" id="config-url" class="input-text mono" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="config-key">Anon key</label>
+                            <input type="password" id="config-key" class="input-text mono" readonly>
+                            <p class="field-hint">Public by design. Access is enforced by row-level security and admin checks.</p>
+                        </div>
+                        <button id="test-connection-btn" class="btn btn-secondary">Test connection &amp; admin status</button>
+                    </div>
+                </section>
+
+            </div>
         </main>
     </div>
 
-    <!-- MODAL CONFIRMATION -->
+    <!-- ============================ CONFIRM MODAL ============================ -->
     <div id="modal-backdrop" class="modal-backdrop hidden">
-        <div class="modal card">
-            <h3 id="modal-title">Confirm Action</h3>
+        <div class="modal card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <h3 id="modal-title">Confirm action</h3>
             <p id="modal-desc">Are you sure you want to proceed?</p>
             <div id="modal-input-container" class="form-group hidden">
-                <label id="modal-input-label">Type confirmation:</label>
+                <label id="modal-input-label" for="modal-input">Type to confirm</label>
                 <input type="text" id="modal-input" class="input-text">
             </div>
             <div class="modal-actions">
