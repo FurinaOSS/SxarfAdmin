@@ -1,381 +1,418 @@
 // ============================================================================
-// Sxarf AI Admin Console - Frontend Application Logic (Bulletproof Edition)
+// Sxarf AI Admin Console - Frontend Application Logic
 // ============================================================================
 
 const SUPABASE_URL = 'https://toduyybsfaxgidehogbe.supabase.co';
-// Public Anon Key - Safe for client-side usage
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHV5eWJzZmF4Z2lkZWhvZ2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMzY5NzIsImV4cCI6MjEwOTcxMjk3Mn0.b7s-vQrNlsmIEMtZHV2krbql46jjaWGAGdREsqOnYz8'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZHV5eWJzZmF4Z2lkZWhvZ2JlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQxMzY5NzIsImV4cCI6MjEwOTcxMjk3Mn0.b7s-vQrNlsmIEMtZHV2krbql46jjaWGAGdREsqOnYz8';
 
-// Initialize Supabase Client using standard flow to avoid verifier loss on static hosts
 const { createClient } = supabase;
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
-        flowType: 'implicit' // Bypasses PKCE code_verifier storage requirement
+        flowType: 'implicit'
     }
 });
 
-// State
+// ---------------------------------------------------------------- state
 let currentUser = null;
 let currentModalAction = null;
+let plans = [];               // [{plan, rank, display_name}] from plan_definitions
+let verifying = false;        // prevents double admin checks
+let verifiedUserId = null;
 
-// DOM Elements
-const authView = document.getElementById('auth-view');
-const appView = document.getElementById('app-view');
-const googleLoginBtn = document.getElementById('google-login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const authError = document.getElementById('auth-error');
-const userEmailSpan = document.getElementById('user-email');
+const $ = (id) => document.getElementById(id);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Navigation Tabs
-const navItems = document.querySelectorAll('.nav-item');
-const tabContents = document.querySelectorAll('.tab-content');
+function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
-// Initialize App
-document.addEventListener('DOMContentLoaded', async () => {
+function fmtDate(v, withTime = false) {
+    if (!v) return '-';
+    const d = new Date(v);
+    return withTime ? d.toLocaleString() : d.toLocaleDateString();
+}
+
+function errMsg(error) {
+    return (error && (error.message || error.details)) || 'Unknown error';
+}
+
+// ---------------------------------------------------------------- boot
+document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     setupEventListeners();
 
-    // 1. Bulletproof PKCE Code Interceptor for GitHub Pages redirection
-    const urlParams = new URLSearchParams(window.location.search);
-    const authCode = urlParams.get('code');
-
-    if (authCode) {
-        console.log("Detected PKCE auth code in URL, forcing session exchange...");
-        try {
-            const { data, error } = await supabaseClient.auth.exchangeCodeForSession(window.location.href);
-            if (error) throw error;
-            console.log("Successfully exchanged code for session:", data.session);
-            // Clean URL query parameters to avoid loop/reuse issues
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } catch (err) {
-            console.error("Code exchange failed:", err);
-            showAuthError("Authentication code exchange failed: " + err.message);
-        }
-    }
-
-    // 2. Check existing session
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
-    console.log("Initial getSession result:", session, error);
-
-    if (session) {
-        await handleSuccessfulAuth(session);
-    } else {
-        showAuthView();
-    }
-
-    // 3. Listen for auth state changes
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        console.log("Auth state change event:", event, session);
-        if (session) {
-            await handleSuccessfulAuth(session);
-        } else {
-            showAuthView();
-        }
+    // Single source of truth: the auth listener. It fires INITIAL_SESSION on load
+    // (also after returning from Google with the token in the URL hash).
+    // NOTE: never await supabase calls directly inside this callback (can deadlock) -> setTimeout.
+    sb.auth.onAuthStateChange((event, session) => {
+        setTimeout(() => {
+            if (session) handleSuccessfulAuth(session);
+            else { verifiedUserId = null; showAuthView(); }
+        }, 0);
     });
 });
 
 function setupNavigation() {
-    navItems.forEach(item => {
+    document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            const tabName = item.getAttribute('data-tab');
-            
-            navItems.forEach(nav => nav.classList.remove('active'));
-            item.classList.add('active');
-
-            tabContents.forEach(tab => tab.classList.remove('active'));
-            document.getElementById(`tab-${tabName}`).classList.add('active');
-
-            // Load data for specific tabs
-            loadTabData(tabName);
+            switchTab(item.getAttribute('data-tab'));
         });
     });
 }
 
-function showAuthView() {
-    authView.classList.remove('hidden');
-    appView.classList.add('hidden');
+function switchTab(tabName) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === tabName));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.toggle('active', t.id === `tab-${tabName}`));
+    loadTabData(tabName);
 }
 
-async function handleSuccessfulAuth(session) {
-    currentUser = session.user;
-    userEmailSpan.textContent = currentUser.email;
-
-    // Verify admin privileges server-side via private.is_admin() or overview stats RPC
-    try {
-        console.log("Verifying admin privileges via RPC...");
-        const { data, error } = await supabaseClient.rpc('admin_get_overview_stats');
-        if (error) throw error;
-
-        console.log("Admin verification passed. Launching console.");
-        authView.classList.add('hidden');
-        appView.classList.remove('hidden');
-        loadTabData('overview');
-    } catch (err) {
-        console.error('Admin authorization check failed:', err);
-        showAuthError(`Access Denied: Account (${currentUser.email}) does not possess administrator privileges.`);
-        await supabaseClient.auth.signOut();
-        showAuthView();
-    }
+function showAuthView() {
+    $('auth-view').classList.remove('hidden');
+    $('app-view').classList.add('hidden');
 }
 
 function showAuthError(msg) {
-    authError.textContent = msg;
-    authError.classList.remove('hidden');
+    $('auth-error').textContent = msg;
+    $('auth-error').classList.remove('hidden');
 }
 
-function setupEventListeners() {
-    googleLoginBtn.addEventListener('click', async () => {
-        const { error } = await supabaseClient.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: window.location.href.split('#')[0].split('?')[0]
+async function handleSuccessfulAuth(session) {
+    // Token refreshes re-fire the listener; don't re-verify the same user.
+    if (verifying || (verifiedUserId === session.user.id && !$('app-view').classList.contains('hidden'))) return;
+    verifying = true;
+    currentUser = session.user;
+    $('user-email').textContent = currentUser.email || '';
+
+    try {
+        const { error } = await sb.rpc('admin_get_overview_stats');
+        if (error) {
+            // 42501 = our assert_admin() rejection -> genuinely not an admin
+            if (error.code === '42501') {
+                showAuthError(`Access denied: ${currentUser.email} is not an administrator.`);
+                await sb.auth.signOut();
+                return;
             }
+            // Anything else (function missing, network...) is a setup problem, not "not admin"
+            showAuthError(`Could not verify admin access: ${errMsg(error)}`);
+            showAuthView();
+            return;
+        }
+
+        verifiedUserId = currentUser.id;
+        $('auth-error').classList.add('hidden');
+        $('auth-view').classList.add('hidden');
+        $('app-view').classList.remove('hidden');
+        await loadPlans();
+        switchTab('overview');
+    } finally {
+        verifying = false;
+    }
+}
+
+// ---------------------------------------------------------------- plans
+async function loadPlans() {
+    const { data, error } = await sb.rpc('admin_list_plans');
+    if (error) { console.error('admin_list_plans failed', error); plans = []; alert('Could not load plans: ' + errMsg(error)); }
+    else plans = data || [];
+
+    const paid = plans.filter(p => p.rank > 0);
+    $('gc-plan').innerHTML = paid.map(p => `<option value="${esc(p.plan)}">${esc(p.display_name || p.plan)}</option>`).join('');
+}
+
+function paidPlanNames() {
+    return plans.filter(p => p.rank > 0).map(p => p.plan);
+}
+
+// ---------------------------------------------------------------- resolving a user
+async function resolveUserId(input) {
+    const v = (input || '').trim();
+    if (!v) return null;
+    if (UUID_RE.test(v)) return v;
+    const { data, error } = await sb.rpc('admin_search_accounts', { p_query: v, p_limit: 5 });
+    if (error) { alert('Lookup failed: ' + errMsg(error)); return null; }
+    const exact = (data || []).filter(a => (a.email || '').toLowerCase() === v.toLowerCase());
+    if (exact.length === 1) return exact[0].id;
+    if ((data || []).length === 1) return data[0].id;
+    alert((data || []).length ? 'Several accounts match; use the exact email or UUID.' : 'No account found for "' + v + '".');
+    return null;
+}
+
+// ---------------------------------------------------------------- events
+function setupEventListeners() {
+    $('google-login-btn').addEventListener('click', async () => {
+        $('auth-error').classList.add('hidden');
+        const { error } = await sb.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: window.location.origin + window.location.pathname }
         });
         if (error) showAuthError(error.message);
     });
 
-    logoutBtn.addEventListener('click', async () => {
-        await supabaseClient.auth.signOut();
-    });
+    $('logout-btn').addEventListener('click', async () => { await sb.auth.signOut(); });
 
-    // Account Search
-    document.getElementById('account-search-btn').addEventListener('click', () => {
-        const query = document.getElementById('account-search-input').value.trim();
-        loadAccounts(query);
+    // Accounts
+    $('account-search-btn').addEventListener('click', () => loadAccounts($('account-search-input').value.trim()));
+    $('account-search-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') loadAccounts($('account-search-input').value.trim());
     });
+    $('accounts-table-body').addEventListener('click', onAccountAction);
 
     // Capabilities
-    document.getElementById('cap-submit-btn').addEventListener('click', async () => {
-        const userId = document.getElementById('cap-user-input').value.trim();
-        const capsStr = document.getElementById('cap-list-input').value.trim();
-        if (!userId || !capsStr) return alert('Please enter User ID and capabilities.');
-        const caps = capsStr.split(',').map(s => s.trim()).filter(Boolean);
-
-        const { data, error } = await supabaseClient.rpc('admin_give_limited', {
-            p_user_id: userId,
-            p_capabilities: caps
-        });
-        if (error) alert('Error: ' + error.message);
-        else {
-            alert('Capabilities granted successfully.');
-            document.getElementById('cap-user-input').value = '';
-            document.getElementById('cap-list-input').value = '';
-        }
+    $('cap-submit-btn').addEventListener('click', async () => {
+        const userId = await resolveUserId($('cap-user-input').value);
+        const caps = $('cap-list-input').value.split(',').map(s => s.trim()).filter(Boolean);
+        if (!userId || !caps.length) return alert('Enter a user (UUID or email) and at least one capability.');
+        const { error } = await sb.rpc('admin_give_limited', { p_user_id: userId, p_capabilities: caps });
+        if (error) return alert('Error: ' + errMsg(error));
+        alert('Capabilities granted.');
+        $('cap-user-input').value = '';
+        $('cap-list-input').value = '';
     });
 
-    // Gift Cards Generation
-    document.getElementById('gc-generate-btn').addEventListener('click', async () => {
-        const plan = document.getElementById('gc-plan').value;
-        const duration = document.getElementById('gc-duration').value;
-        const count = parseInt(document.getElementById('gc-count').value, 10) || 1;
-        const note = document.getElementById('gc-note').value.trim();
-
-        const { data, error } = await supabaseClient.rpc('admin_generate_gift_cards', {
-            p_plan: plan,
-            p_duration: duration,
-            p_capabilities: ['chat', 'vision', 'advanced_models'],
-            p_count: count,
-            p_note: note
-        });
-
-        if (error) alert('Error generating gift cards: ' + error.message);
-        else {
-            document.getElementById('gc-results-container').classList.remove('hidden');
-            document.getElementById('gc-generated-output').value = JSON.stringify(data, null, 2);
-        }
+    // Gift cards
+    $('gc-generate-btn').addEventListener('click', generateGiftCards);
+    $('gc-refresh-btn').addEventListener('click', loadGiftCards);
+    $('gc-table-body').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-revoke]');
+        if (b) revokeGiftCard(b.dataset.revoke);
     });
 
     // Disclaimers
-    document.getElementById('disclaimer-send-one').addEventListener('click', async () => {
-        const targetId = document.getElementById('disclaimer-target').value.trim();
-        const message = document.getElementById('disclaimer-message').value.trim();
-        if (!targetId || !message) return alert('Target user UUID and message are required.');
-
-        const { error } = await supabaseClient.rpc('admin_send_disclaimer_to', {
-            p_user_id: targetId,
-            p_message: message
-        });
-        if (error) alert('Error: ' + error.message);
-        else {
-            alert('Disclaimer sent to user successfully.');
-            document.getElementById('disclaimer-message').value = '';
-        }
+    $('disclaimer-send-one').addEventListener('click', async () => {
+        const targetId = await resolveUserId($('disclaimer-target').value);
+        const message = $('disclaimer-message').value.trim();
+        if (!targetId || !message) return alert('A target user (UUID or email) and a message are required.');
+        const { error } = await sb.rpc('admin_send_disclaimer_to', { p_user_id: targetId, p_message: message });
+        if (error) return alert('Error: ' + errMsg(error));
+        alert('Disclaimer sent.');
+        $('disclaimer-message').value = '';
     });
 
-    document.getElementById('disclaimer-send-all').addEventListener('click', async () => {
-        const message = document.getElementById('disclaimer-message').value.trim();
+    $('disclaimer-send-all').addEventListener('click', () => {
+        const message = $('disclaimer-message').value.trim();
         if (!message) return alert('Message content is required.');
-
-        const { error } = await supabaseClient.rpc('admin_send_disclaimer_to_all_accounts', {
-            p_message: message
-        });
-        if (error) alert('Error: ' + error.message);
-        else {
-            alert('Broadcast disclaimer sent to all accounts.');
-            document.getElementById('disclaimer-message').value = '';
-        }
-    });
-
-    // Public Access
-    document.getElementById('public-shutdown-btn').addEventListener('click', async () => {
-        const msg = document.getElementById('public-shutdown-msg').value.trim();
-        openModal('Shut Down Public Access', 'Are you sure you want to disable public access to Sxarf AI?', async () => {
-            const { error } = await supabaseClient.rpc('admin_shut_down_public_access', { p_message: msg });
-            if (error) alert('Error: ' + error.message);
-            else {
-                alert('Public access shut down successfully.');
-                loadTabData('publicaccess');
-            }
+        openModal('Broadcast to all accounts', 'This sends the notice to every account. Continue?', async () => {
+            const { error } = await sb.rpc('admin_send_disclaimer_to_all_accounts', { p_message: message });
+            if (error) return alert('Error: ' + errMsg(error));
+            alert('Broadcast sent.');
+            $('disclaimer-message').value = '';
         });
     });
 
-    document.getElementById('public-restore-btn').addEventListener('click', async () => {
-        const { error } = await supabaseClient.rpc('admin_start_public_access');
-        if (error) alert('Error: ' + error.message);
-        else {
-            alert('Public access restored successfully.');
-            loadTabData('publicaccess');
-        }
+    // Public access
+    $('public-shutdown-btn').addEventListener('click', () => {
+        const msg = $('public-shutdown-msg').value.trim() || null;
+        openModal('Shut down public access', 'Disable access to Sxarf AI for all users?', async () => {
+            const { error } = await sb.rpc('admin_shut_down_public_access', { p_message: msg });
+            if (error) return alert('Error: ' + errMsg(error));
+            alert('Public access shut down.');
+            loadPublicAccessState();
+        });
     });
 
-    // Modal buttons
-    document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
-    document.getElementById('modal-confirm-btn').addEventListener('click', () => {
-        if (currentModalAction) currentModalAction();
+    $('public-restore-btn').addEventListener('click', async () => {
+        const { error } = await sb.rpc('admin_start_public_access');
+        if (error) return alert('Error: ' + errMsg(error));
+        alert('Public access restored.');
+        loadPublicAccessState();
+    });
+
+    // Settings
+    $('test-connection-btn').addEventListener('click', async () => {
+        const { data: { session } } = await sb.auth.getSession();
+        const { data, error } = await sb.rpc('admin_get_overview_stats');
+        alert(
+            `Session: ${session ? 'signed in as ' + session.user.email : 'none'}\n` +
+            `Admin RPC: ${error ? 'FAILED - ' + errMsg(error) : 'OK'}\n` +
+            `Plans loaded: ${plans.length ? plans.map(p => p.plan).join(', ') : 'none (run admin_fix.sql)'}`
+        );
+    });
+
+    // Modal
+    $('modal-cancel-btn').addEventListener('click', closeModal);
+    $('modal-confirm-btn').addEventListener('click', async () => {
+        const action = currentModalAction;
         closeModal();
+        if (action) await action();
     });
 }
 
+// ---------------------------------------------------------------- tabs
 async function loadTabData(tabName) {
     switch (tabName) {
-        case 'overview':
-            await loadOverviewStats();
-            break;
-        case 'accounts':
-            await loadAccounts();
-            break;
-        case 'publicaccess':
-            await loadPublicAccessState();
-            break;
-        case 'redemptions':
-            await loadRedemptions();
-            break;
-        case 'auditlog':
-            await loadAuditLogs();
-            break;
+        case 'overview':     return loadOverviewStats();
+        case 'accounts':     return loadAccounts($('account-search-input').value.trim());
+        case 'giftcards':    return loadGiftCards();
+        case 'publicaccess': return loadPublicAccessState();
+        case 'redemptions':  return loadRedemptions();
+        case 'auditlog':     return loadAuditLogs();
         case 'settings':
-            document.getElementById('config-url').value = SUPABASE_URL;
-            document.getElementById('config-key').value = SUPABASE_ANON_KEY;
-            break;
+            $('config-url').value = SUPABASE_URL;
+            $('config-key').value = SUPABASE_ANON_KEY;
     }
 }
 
 async function loadOverviewStats() {
-    // Explicitly grab the active session to ensure the token is attached
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (!session) {
-        console.error("No active session found during overview stats load.");
-        showAuthView();
-        return;
-    }
-
-    const { data, error } = await supabaseClient.rpc('admin_get_overview_stats');
-    if (error) {
-        console.error("RPC Error loading overview stats:", error);
-        return;
-    }
-
-    if (!data) return;
-
-    document.getElementById('stat-total-accounts').textContent = data.total_accounts ?? 0;
-    document.getElementById('stat-active-subs').textContent = data.active_subscriptions ?? 0;
-    document.getElementById('stat-expired-subs').textContent = data.expired_subscriptions ?? 0;
-    document.getElementById('stat-suspended').textContent = data.suspended_accounts ?? 0;
-    document.getElementById('stat-terminated').textContent = data.terminated_accounts ?? 0;
-    document.getElementById('stat-gc-gen').textContent = data.gift_cards_generated ?? 0;
+    const { data, error } = await sb.rpc('admin_get_overview_stats');
+    if (error || !data) { console.error('Overview stats failed:', error); return; }
+    $('stat-total-accounts').textContent = data.total_accounts ?? 0;
+    $('stat-active-subs').textContent = data.active_subscriptions ?? 0;
+    $('stat-expired-subs').textContent = data.expired_subscriptions ?? 0;
+    $('stat-suspended').textContent = data.suspended_accounts ?? 0;
+    $('stat-terminated').textContent = data.terminated_accounts ?? 0;
+    $('stat-gc-gen').textContent = data.gift_cards_generated ?? 0;
 }
 
+// ---------------------------------------------------------------- accounts
 async function loadAccounts(query = '') {
-    const { data, error } = await supabaseClient.rpc('admin_search_accounts', { p_query: query, p_limit: 100 });
-    const tbody = document.getElementById('accounts-table-body');
-    tbody.innerHTML = '';
-
+    const tbody = $('accounts-table-body');
+    tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+    const { data, error } = await sb.rpc('admin_search_accounts', { p_query: query, p_limit: 100 });
     if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading accounts</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5">Error loading accounts: ${esc(errMsg(error))}</td></tr>`;
         return;
     }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="5">No accounts found.</td></tr>'; return; }
 
+    tbody.innerHTML = '';
     data.forEach(acc => {
-        let statusBadge = '<span class="badge badge-active">Active</span>';
-        if (acc.is_terminated) statusBadge = '<span class="badge badge-terminated">Terminated</span>';
-        else if (acc.is_suspended) statusBadge = '<span class="badge badge-suspended">Suspended</span>';
+        let badge = '<span class="badge badge-active">Active</span>';
+        if (acc.is_terminated) badge = '<span class="badge badge-terminated">Terminated</span>';
+        else if (acc.is_suspended) badge = '<span class="badge badge-suspended">Suspended</span>';
 
+        const planLabel = acc.plan_ended ? `Free <small>(${esc(acc.plan)} ended)</small>` : esc(acc.plan || 'Free');
+        const id = esc(acc.id);
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${acc.email || 'No email'}</strong><br><small style="color:var(--text-muted);font-family:var(--font-mono);">${acc.id}</small></td>
-            <td><code>${acc.plan || 'free'}</code></td>
-            <td>${acc.plan_expires_at ? new Date(acc.plan_expires_at).toLocaleDateString() : 'Never'}</td>
-            <td>${statusBadge}</td>
+            <td><strong>${esc(acc.email) || 'No email'}</strong><br><small style="color:var(--text-muted);font-family:var(--font-mono);">${id}</small></td>
+            <td><code>${planLabel}</code></td>
+            <td>${acc.plan_expires_at ? esc(fmtDate(acc.plan_expires_at)) : (acc.plan && acc.plan !== 'Free' ? 'Never' : '-')}</td>
+            <td>${badge}</td>
             <td>
-                <button class="btn btn-secondary" onclick="actionRevoke('${acc.id}')" style="padding:4px 8px;font-size:11px;">Revoke</button>
-                <button class="btn btn-secondary" onclick="actionUpgrade('${acc.id}')" style="padding:4px 8px;font-size:11px;">Upgrade</button>
-                ${acc.is_suspended ? 
-                    `<button class="btn btn-success" onclick="actionUnsuspend('${acc.id}')" style="padding:4px 8px;font-size:11px;">Unsuspend</button>` : 
-                    `<button class="btn btn-secondary" onclick="actionSuspend('${acc.id}')" style="padding:4px 8px;font-size:11px;">Suspend</button>`
-                }
-                <button class="btn btn-danger" onclick="actionTerminate('${acc.id}')" style="padding:4px 8px;font-size:11px;">Terminate</button>
-            </td>
-        `;
+                <button class="btn btn-secondary" data-action="upgrade" data-id="${id}" style="padding:4px 8px;font-size:11px;">Upgrade</button>
+                <button class="btn btn-secondary" data-action="downgrade" data-id="${id}" style="padding:4px 8px;font-size:11px;">Downgrade</button>
+                <button class="btn btn-secondary" data-action="revoke" data-id="${id}" style="padding:4px 8px;font-size:11px;">Revoke</button>
+                ${acc.is_suspended
+                    ? `<button class="btn btn-success" data-action="unsuspend" data-id="${id}" style="padding:4px 8px;font-size:11px;">Unsuspend</button>`
+                    : `<button class="btn btn-secondary" data-action="suspend" data-id="${id}" style="padding:4px 8px;font-size:11px;">Suspend</button>`}
+                <button class="btn btn-danger" data-action="terminate" data-id="${id}" style="padding:4px 8px;font-size:11px;">Terminate</button>
+            </td>`;
         tbody.appendChild(tr);
     });
 }
 
-// Account Action Handlers attached globally
-window.actionRevoke = async (userId) => {
-    if (!confirm('Revoke plan for this account and revert to Free?')) return;
-    const { error } = await supabaseClient.rpc('admin_revoke_account', { p_user_id: userId });
-    if (error) alert('Error: ' + error.message);
-    else { alert('Account revoked successfully.'); loadAccounts(); }
-};
+async function runAccountRpc(fn, args, okMsg) {
+    const { error } = await sb.rpc(fn, args);
+    if (error) return alert('Error: ' + errMsg(error));
+    alert(okMsg);
+    loadAccounts($('account-search-input').value.trim());
+}
 
-window.actionUpgrade = async (userId) => {
-    const plan = prompt('Enter target plan (starter, pro, enterprise):', 'pro');
-    if (!plan) return;
-    const { error } = await supabaseClient.rpc('admin_upgrade_account', { p_user_id: userId, p_plan: plan });
-    if (error) alert('Error: ' + error.message);
-    else { alert('Account upgraded successfully.'); loadAccounts(); }
-};
+function onAccountAction(e) {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const paid = paidPlanNames();
 
-window.actionSuspend = async (userId) => {
-    const reason = prompt('Enter suspension reason:', 'Administrative suspension');
-    const { error } = await supabaseClient.rpc('admin_suspend_account', { p_user_id: userId, p_reason: reason });
-    if (error) alert('Error: ' + error.message);
-    else { alert('Account suspended successfully.'); loadAccounts(); }
-};
+    switch (btn.dataset.action) {
+        case 'upgrade': {
+            const plan = prompt(`Plan to give (${paid.join(', ')}):`, paid[0] || '');
+            if (!plan) return;
+            const months = prompt('Duration in months (1, 3, 12). Leave blank for permanent:', '1');
+            if (months === null) return;
+            let expires = null;
+            if (months.trim() !== '') {
+                const m = parseInt(months, 10);
+                if (!m || m < 1) return alert('Invalid number of months.');
+                const d = new Date(); d.setMonth(d.getMonth() + m);
+                expires = d.toISOString();
+            }
+            return runAccountRpc('admin_upgrade_account', { p_user_id: id, p_plan: plan.trim(), p_expires_at: expires }, 'Plan updated.');
+        }
+        case 'downgrade': {
+            const names = plans.map(p => p.plan);
+            const plan = prompt(`Set plan to (${names.join(', ')}):`, names[0] || 'Free');
+            if (!plan) return;
+            return runAccountRpc('admin_downgrade_account', { p_user_id: id, p_plan: plan.trim() }, 'Plan changed.');
+        }
+        case 'revoke':
+            if (!confirm('Reset this account to Free and remove extra capabilities?')) return;
+            return runAccountRpc('admin_revoke_account', { p_user_id: id }, 'Account reset to Free.');
+        case 'suspend': {
+            const reason = prompt('Suspension reason:', 'Administrative suspension');
+            if (reason === null) return;
+            return runAccountRpc('admin_suspend_account', { p_user_id: id, p_reason: reason }, 'Account suspended.');
+        }
+        case 'unsuspend':
+            return runAccountRpc('admin_unsuspend_account', { p_user_id: id }, 'Account unsuspended.');
+        case 'terminate': {
+            const reason = prompt('PERMANENT termination reason:', 'Violation of terms');
+            if (!reason) return;
+            if (!confirm('Terminate this account permanently?')) return;
+            return runAccountRpc('admin_terminate_account', { p_user_id: id, p_reason: reason }, 'Account terminated.');
+        }
+    }
+}
 
-window.actionUnsuspend = async (userId) => {
-    const { error } = await supabaseClient.rpc('admin_unsuspend_account', { p_user_id: userId });
-    if (error) alert('Error: ' + error.message);
-    else { alert('Account unsuspended successfully.'); loadAccounts(); }
-};
+// ---------------------------------------------------------------- gift cards
+async function generateGiftCards() {
+    const plan = $('gc-plan').value;
+    const duration = $('gc-duration').value;
+    const count = Math.min(Math.max(parseInt($('gc-count').value, 10) || 1, 1), 100);
+    const note = $('gc-note').value.trim() || null;
+    if (!plan) return alert('No paid plans loaded. Run admin_fix.sql, then reload.');
 
-window.actionTerminate = async (userId) => {
-    const reason = prompt('CRITICAL: Permanent termination reason:', 'Violation of terms');
-    if (!reason) return;
-    const { error } = await supabaseClient.rpc('admin_terminate_account', { p_user_id: userId, p_reason: reason });
-    if (error) alert('Error: ' + error.message);
-    else { alert('Account terminated permanently.'); loadAccounts(); }
-};
+    const { data, error } = await sb.rpc('admin_generate_gift_cards_logged', {
+        p_plan: plan, p_duration: duration, p_count: count, p_note: note
+    });
+    if (error) return alert('Error generating gift cards: ' + errMsg(error));
 
+    $('gc-results-container').classList.remove('hidden');
+    $('gc-generated-output').value = (data || []).map(r => r.code).join('\n');
+    loadGiftCards();
+}
+
+async function loadGiftCards() {
+    const tbody = $('gc-table-body');
+    tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+    const { data, error } = await sb.rpc('admin_list_gift_cards', { p_status: null, p_limit: 200 });
+    if (error || !data) { tbody.innerHTML = `<tr><td colspan="7">Error: ${esc(errMsg(error))}</td></tr>`; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="7">No gift cards yet.</td></tr>'; return; }
+    tbody.innerHTML = data.map(g => `
+        <tr>
+            <td><code>...${esc(g.code_hint)}</code></td>
+            <td>${esc(g.reward_plan || '-')}</td>
+            <td>${durationLabel(g.duration_months)}</td>
+            <td>${esc(g.status)}</td>
+            <td>${esc(g.note || '-')}</td>
+            <td>${esc(g.redeemed_by_email || '-')}</td>
+            <td>${g.status === 'unused' ? `<button class="btn btn-secondary" data-revoke="${esc(g.id)}">Revoke</button>` : ''}</td>
+        </tr>`).join('');
+}
+
+async function revokeGiftCard(id) {
+    if (!confirm('Revoke this unused card? This cannot be undone.')) return;
+    const { data, error } = await sb.rpc('admin_revoke_gift_card', { p_id: id });
+    if (error) return alert('Error: ' + errMsg(error));
+    if (data && data.ok === false) return alert('Could not revoke: ' + (data.error || 'unknown'));
+    loadGiftCards();
+}
+
+function durationLabel(m) {
+    if (m === null || m === undefined) return 'Permanent';
+    return m === 12 ? '1 year' : `${m} month${m > 1 ? 's' : ''}`;
+}
+
+// ---------------------------------------------------------------- public access
 async function loadPublicAccessState() {
-    const { data, error } = await supabaseClient.rpc('admin_get_overview_stats');
+    const { data, error } = await sb.rpc('admin_get_overview_stats');
     if (error || !data) return;
-    const pa = data.public_access;
-    const badge = document.getElementById('public-access-status-badge');
+    const pa = data.public_access || { enabled: true };
+    const badge = $('public-access-status-badge');
     if (pa.enabled) {
         badge.textContent = 'ONLINE (Public Access Enabled)';
         badge.className = 'badge badge-active';
@@ -385,56 +422,49 @@ async function loadPublicAccessState() {
     }
 }
 
+// ---------------------------------------------------------------- redemptions / audit
 async function loadRedemptions() {
-    const { data, error } = await supabaseClient.rpc('admin_redemption_history', { p_limit: 100 });
-    const tbody = document.getElementById('redemptions-table-body');
-    tbody.innerHTML = '';
-    if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="5">No redemption records or unsupported RPC</td></tr>`;
-        return;
-    }
-    data.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><code>${r.id || r.code_id || '-'}</code></td>
-            <td>${r.plan || '-'}</td>
-            <td>${r.duration || '-'}</td>
-            <td>${r.redeemed_by || '-'}</td>
-            <td>${r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : '-'}</td>
-        `;
-        tbody.appendChild(tr);
-    });
+    const tbody = $('redemptions-table-body');
+    tbody.innerHTML = '<tr><td colspan="6">Loading...</td></tr>';
+    const { data, error } = await sb.rpc('admin_redemption_history', { p_limit: 200 });
+    if (error || !data) { tbody.innerHTML = `<tr><td colspan="6">Error: ${esc(errMsg(error))}</td></tr>`; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="6">No redemptions yet.</td></tr>'; return; }
+    tbody.innerHTML = data.map(r => `
+        <tr>
+            <td><code>...${esc(r.code_hint)}</code></td>
+            <td>${esc(r.reward_plan || '-')}</td>
+            <td>${durationLabel(r.duration_months)}</td>
+            <td>${esc(r.user_email || '-')}</td>
+            <td>${esc(r.plan_before || '-')} &rarr; ${esc(r.plan_after || '-')}</td>
+            <td>${esc(fmtDate(r.redeemed_at, true))}</td>
+        </tr>`).join('');
 }
 
 async function loadAuditLogs() {
-    const { data, error } = await supabaseClient.rpc('admin_get_audit_logs', { p_limit: 100 });
-    const tbody = document.getElementById('audit-table-body');
-    tbody.innerHTML = '';
-    if (error || !data) {
-        tbody.innerHTML = `<tr><td colspan="5">Error loading audit logs</td></tr>`;
-        return;
-    }
-    data.forEach(log => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${new Date(log.created_at).toLocaleString()}</td>
-            <td>${log.admin_email || log.admin_id || 'System'}</td>
-            <td><code>${log.action}</code></td>
-            <td><small>${log.target_email || log.target_id || '-'}</small></td>
-            <td><pre style="font-size:11px;background:none;color:var(--text-muted);">${JSON.stringify(log.details)}</pre></td>
-        `;
-        tbody.appendChild(tr);
-    });
+    const tbody = $('audit-table-body');
+    tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+    const { data, error } = await sb.rpc('admin_get_audit_logs', { p_limit: 200 });
+    if (error || !data) { tbody.innerHTML = `<tr><td colspan="5">Error: ${esc(errMsg(error))}</td></tr>`; return; }
+    if (!data.length) { tbody.innerHTML = '<tr><td colspan="5">No audit entries yet.</td></tr>'; return; }
+    tbody.innerHTML = data.map(log => `
+        <tr>
+            <td>${esc(fmtDate(log.created_at, true))}</td>
+            <td>${esc(log.admin_email || log.admin_id || 'System')}</td>
+            <td><code>${esc(log.action)}</code></td>
+            <td><small>${esc(log.target_email || log.target_id || '-')}</small></td>
+            <td><pre style="font-size:11px;background:none;color:var(--text-muted);white-space:pre-wrap;">${esc(JSON.stringify(log.details))}</pre></td>
+        </tr>`).join('');
 }
 
+// ---------------------------------------------------------------- modal
 function openModal(title, desc, confirmCallback) {
-    document.getElementById('modal-title').textContent = title;
-    document.getElementById('modal-desc').textContent = desc;
+    $('modal-title').textContent = title;
+    $('modal-desc').textContent = desc;
     currentModalAction = confirmCallback;
-    document.getElementById('modal-backdrop').classList.remove('hidden');
+    $('modal-backdrop').classList.remove('hidden');
 }
 
 function closeModal() {
-    document.getElementById('modal-backdrop').classList.add('hidden');
+    $('modal-backdrop').classList.add('hidden');
     currentModalAction = null;
 }
